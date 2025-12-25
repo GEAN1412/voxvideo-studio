@@ -63,3 +63,52 @@ export const generateImage = async (prompt: string, aspectRatio: string = "1:1")
     throw error;
   }
 };
+
+export const generateVideo = async (
+  prompt: string, 
+  aspectRatio: string, 
+  resolution: string,
+  onProgress?: (msg: string) => void
+) => {
+  const ai = getAI();
+  onProgress?.("Menyiapkan permintaan ke Veo...");
+  
+  try {
+    let operation = await ai.models.generateVideos({
+      model: 'veo-3.1-fast-generate-preview',
+      prompt: prompt,
+      config: {
+        numberOfVideos: 1,
+        resolution: resolution as any,
+        aspectRatio: aspectRatio as any
+      }
+    });
+
+    const statusMessages = [
+      "Menganalisa komposisi visual...",
+      "Merender frame video...",
+      "Menyusun animasi AI...",
+      "Finalisasi pixel...",
+      "Hampir selesai, sedang mengunggah..."
+    ];
+    let msgIndex = 0;
+
+    while (!operation.done) {
+      onProgress?.(statusMessages[msgIndex % statusMessages.length]);
+      msgIndex++;
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      operation = await ai.operations.getVideosOperation({ operation: operation });
+    }
+
+    const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+    if (!downloadLink) throw new Error("Video gagal dibuat oleh model.");
+
+    // Harus menyertakan API Key saat fetch link video dari Google Cloud
+    const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  } catch (error: any) {
+    console.error("Veo Video Error:", error);
+    throw error;
+  }
+};
