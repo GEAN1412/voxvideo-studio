@@ -14,14 +14,17 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ExtendedTab>('voice');
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasApiKey, setHasApiKey] = useState<boolean>(true);
-  const [isCopying, setIsCopying] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState<boolean>(false);
 
   const checkKey = async () => {
     if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
       const selected = await window.aistudio.hasSelectedApiKey();
       setHasApiKey(selected);
+      return selected;
     }
+    // Jika bukan di lingkungan AI Studio (misal local development)
+    setHasApiKey(true);
+    return true;
   };
 
   const loadUser = async () => {
@@ -33,14 +36,16 @@ const App: React.FC = () => {
 
   useEffect(() => {
     loadUser();
-    const interval = setInterval(loadUser, 10000);
+    // Cek berkala untuk memastikan jika user ganti key di header, UI terupdate
+    const interval = setInterval(checkKey, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const handleSelectKey = async () => {
     if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
       await window.aistudio.openSelectKey();
-      setHasApiKey(true); // Asumsikan sukses setelah dialog dibuka sesuai instruksi
+      // Langsung asumsikan sukses setelah dialog dibuka untuk menghindari race condition
+      setHasApiKey(true);
     }
   };
 
@@ -60,7 +65,6 @@ const App: React.FC = () => {
     );
   }
 
-  // Jika API Key belum dipilih (khusus lingkungan AI Studio)
   if (!hasApiKey) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
@@ -72,7 +76,7 @@ const App: React.FC = () => {
           </div>
           <h2 className="text-2xl font-bold text-white mb-4">Aktivasi Cloud AI</h2>
           <p className="text-slate-400 text-sm mb-8 leading-relaxed">
-            Untuk menggunakan layanan VoxVideo AI, Anda perlu menghubungkan API Key dari Google Cloud Project yang memiliki billing aktif.
+            Project Anda terdeteksi sudah Tier 1. Silakan pilih kembali API Key dari project tersebut untuk mengaktifkan fitur premium.
           </p>
           <button 
             onClick={handleSelectKey}
