@@ -1,0 +1,7 @@
+{
+  "name": "VoxVideo AI Studio",
+  "description": "A high-performance creative suite for multi-language Text-to-Speech and multi-ratio AI Video generation using Gemini and Veo.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
