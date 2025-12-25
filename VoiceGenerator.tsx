@@ -63,17 +63,25 @@ export const VoiceGenerator: React.FC = () => {
         }
       }
     } catch (err: any) {
-      console.error(err);
+      console.error("Full API Error:", err);
       let errMsg = err.message || "Gagal menghasilkan suara";
       
-      // Jika error terkait API Key
-      if (errMsg.toLowerCase().includes("api key") || errMsg.includes("400") || errMsg.toLowerCase().includes("not found")) {
-        errMsg = "API Key tidak valid atau billing belum aktif. Klik icon kunci di header untuk mengatur ulang.";
+      // Penanganan khusus sesuai panduan Gemini API
+      if (
+        errMsg.toLowerCase().includes("requested entity was not found") || 
+        errMsg.toLowerCase().includes("api key not valid") ||
+        errMsg.includes("403") || 
+        errMsg.includes("400")
+      ) {
+        errMsg = "Sinkronisasi Billing Diperlukan: Google memerlukan verifikasi ulang API Key untuk akun Tier 1 Anda.";
+        
+        // Pemicu dialog pilih kunci otomatis
         if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
-          // Opsional: Langsung tawarkan buka dialog jika error fatal
-          if (window.confirm("API Key bermasalah. Ingin memilih Key baru sekarang?")) {
-             window.aistudio.openSelectKey();
-          }
+          setTimeout(() => {
+            if (window.confirm("Project Anda sudah Tier 1, tetapi API Key perlu disegarkan. Buka menu pilih Key sekarang?")) {
+              window.aistudio.openSelectKey();
+            }
+          }, 500);
         }
       }
       
@@ -123,7 +131,12 @@ export const VoiceGenerator: React.FC = () => {
         ))}
       </div>
       
-      {error && <div className="p-4 bg-red-900/20 border border-red-500/50 text-red-400 rounded-xl text-sm leading-relaxed">{error}</div>}
+      {error && (
+        <div className="p-4 bg-red-900/20 border border-red-500/50 text-red-400 rounded-xl text-sm leading-relaxed flex items-start space-x-3">
+          <svg className="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span>{error}</span>
+        </div>
+      )}
       
       {audioUrl && (
         <button onClick={() => { const l=document.createElement('a'); l.href=audioUrl; l.download=`voice-${Date.now()}.wav`; l.click(); }} className="w-full py-3 bg-slate-800 border border-slate-700 hover:bg-slate-700 rounded-xl text-white flex items-center justify-center space-x-2 transition-all">
