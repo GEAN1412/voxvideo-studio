@@ -12,7 +12,7 @@ export const VoiceGenerator: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [testingVoiceId, setTestingVoiceId] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{msg: string, isKeyIssue: boolean} | null>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [user, setUser] = useState<User | null>(null);
 
@@ -26,6 +26,17 @@ export const VoiceGenerator: React.FC = () => {
     const interval = setInterval(fetchUser, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleFixApiKey = async () => {
+    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+      await window.aistudio.openSelectKey();
+      setError(null);
+      // Aturan: Langsung reload atau asumsikan sukses
+      setTimeout(() => window.location.reload(), 500);
+    } else {
+      alert("Jika Anda di Vercel, pastikan Environment Variable API_KEY sudah benar dan Project tersebut memiliki billing aktif di Google Cloud Console.");
+    }
+  };
 
   const handleGenerate = async (targetText: string, voiceId: string, isTest: boolean = false) => {
     if (!targetText.trim()) return;
@@ -63,29 +74,22 @@ export const VoiceGenerator: React.FC = () => {
         }
       }
     } catch (err: any) {
-      console.error("Full API Error:", err);
-      let errMsg = err.message || "Gagal menghasilkan suara";
+      console.error("API Error Response:", err);
+      let rawMsg = err.message || "Gagal menghasilkan suara";
+      let isKeyIssue = false;
       
-      // Penanganan khusus sesuai panduan Gemini API
       if (
-        errMsg.toLowerCase().includes("requested entity was not found") || 
-        errMsg.toLowerCase().includes("api key not valid") ||
-        errMsg.includes("403") || 
-        errMsg.includes("400")
+        rawMsg.toLowerCase().includes("requested entity was not found") || 
+        rawMsg.toLowerCase().includes("api key not valid") ||
+        rawMsg.includes("403") || 
+        rawMsg.includes("404") ||
+        rawMsg.includes("400")
       ) {
-        errMsg = "Sinkronisasi Billing Diperlukan: Google memerlukan verifikasi ulang API Key untuk akun Tier 1 Anda.";
-        
-        // Pemicu dialog pilih kunci otomatis
-        if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
-          setTimeout(() => {
-            if (window.confirm("Project Anda sudah Tier 1, tetapi API Key perlu disegarkan. Buka menu pilih Key sekarang?")) {
-              window.aistudio.openSelectKey();
-            }
-          }, 500);
-        }
+        isKeyIssue = true;
+        rawMsg = "Sinkronisasi Billing Diperlukan: Google memerlukan verifikasi ulang API Key untuk akun Tier 1 Anda agar bisa mengakses model TTS Premium.";
       }
       
-      setError(errMsg);
+      setError({ msg: rawMsg, isKeyIssue });
     } finally {
       if (isTest) setTestingVoiceId(null);
       else setIsGenerating(false);
@@ -132,9 +136,19 @@ export const VoiceGenerator: React.FC = () => {
       </div>
       
       {error && (
-        <div className="p-4 bg-red-900/20 border border-red-500/50 text-red-400 rounded-xl text-sm leading-relaxed flex items-start space-x-3">
-          <svg className="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          <span>{error}</span>
+        <div className="p-5 bg-red-900/20 border border-red-500/50 text-red-400 rounded-2xl text-sm leading-relaxed space-y-3">
+          <div className="flex items-start space-x-3">
+            <svg className="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>{error.msg}</span>
+          </div>
+          {error.isKeyIssue && (
+            <button 
+              onClick={handleFixApiKey}
+              className="w-full py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg transition-all"
+            >
+              Sinkronisasi Ulang API Key
+            </button>
+          )}
         </div>
       )}
       

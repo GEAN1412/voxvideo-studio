@@ -14,21 +14,19 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ExtendedTab>('voice');
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasApiKey, setHasApiKey] = useState<boolean>(false);
+  const [hasApiKey, setHasApiKey] = useState<boolean>(true); // Default true untuk Vercel env
 
-  const checkKey = async () => {
+  const checkKeyStatus = async () => {
     if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
       const selected = await window.aistudio.hasSelectedApiKey();
       setHasApiKey(selected);
       return selected;
     }
-    // Jika bukan di lingkungan AI Studio (misal local development)
-    setHasApiKey(true);
-    return true;
+    return true; // Asumsi true jika di Vercel (menggunakan process.env.API_KEY)
   };
 
   const loadUser = async () => {
-    await checkKey();
+    await checkKeyStatus();
     const u = await getCurrentUser();
     setUser(u);
     setIsLoading(false);
@@ -36,16 +34,18 @@ const App: React.FC = () => {
 
   useEffect(() => {
     loadUser();
-    // Cek berkala untuk memastikan jika user ganti key di header, UI terupdate
-    const interval = setInterval(checkKey, 5000);
+    const interval = setInterval(checkKeyStatus, 3000);
     return () => clearInterval(interval);
   }, []);
 
   const handleSelectKey = async () => {
     if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
       await window.aistudio.openSelectKey();
-      // Langsung asumsikan sukses setelah dialog dibuka untuk menghindari race condition
+      // Aturan: Asumsikan sukses setelah pemicu untuk menghindari race condition
       setHasApiKey(true);
+      window.location.reload(); // Reload untuk memastikan instance GoogleGenAI baru dibuat
+    } else {
+      alert("Fitur pemilihan kunci otomatis hanya tersedia di lingkungan Google AI Studio. Di Vercel, silakan update Environment Variable API_KEY Anda.");
     }
   };
 
@@ -61,33 +61,6 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
         <p className="text-slate-500 font-medium animate-pulse">Menghubungkan ke Cloud...</p>
-      </div>
-    );
-  }
-
-  if (!hasApiKey) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-[2.5rem] p-10 text-center shadow-2xl">
-          <div className="w-20 h-20 bg-blue-600/20 rounded-3xl flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-4">Aktivasi Cloud AI</h2>
-          <p className="text-slate-400 text-sm mb-8 leading-relaxed">
-            Project Anda terdeteksi sudah Tier 1. Silakan pilih kembali API Key dari project tersebut untuk mengaktifkan fitur premium.
-          </p>
-          <button 
-            onClick={handleSelectKey}
-            className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all"
-          >
-            Pilih API Key
-          </button>
-          <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="block mt-4 text-xs text-slate-500 hover:text-blue-400 transition-colors">
-            Pelajari tentang Billing API Key
-          </a>
-        </div>
       </div>
     );
   }
@@ -140,8 +113,8 @@ const App: React.FC = () => {
             </div>
 
             <div className="flex items-center space-x-1 border-l border-slate-800 pl-3">
-              <button onClick={handleSelectKey} title="Ganti API Key" className="p-2 bg-slate-800 text-slate-400 hover:text-blue-400 rounded-lg transition-colors">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+              <button onClick={handleSelectKey} title="Sinkronisasi API Key" className="p-2 bg-slate-800 text-slate-400 hover:text-blue-400 rounded-lg transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
               </button>
               <button onClick={handleLogout} title="Keluar" className="p-2 bg-slate-800 text-slate-400 hover:text-red-400 rounded-lg transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
@@ -152,6 +125,13 @@ const App: React.FC = () => {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 pt-10">
+        {!hasApiKey && window.aistudio && (
+          <div className="mb-6 p-4 bg-blue-900/20 border border-blue-500/50 rounded-2xl flex items-center justify-between">
+            <p className="text-blue-400 text-sm font-medium">API Key Tier 1 terdeteksi belum aktif. Silakan pilih kunci Anda.</p>
+            <button onClick={handleSelectKey} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-lg">Pilih Kunci</button>
+          </div>
+        )}
+        
         <div className="relative group">
           <div className={`absolute -inset-1 bg-gradient-to-r blur opacity-20 group-hover:opacity-30 transition duration-1000 ${
             activeTab === 'voice' ? 'from-blue-600 to-indigo-600' : 
