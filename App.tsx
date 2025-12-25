@@ -14,9 +14,18 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ExtendedTab>('voice');
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasApiKey, setHasApiKey] = useState<boolean>(true);
   const [isCopying, setIsCopying] = useState(false);
 
+  const checkKey = async () => {
+    if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+      const selected = await window.aistudio.hasSelectedApiKey();
+      setHasApiKey(selected);
+    }
+  };
+
   const loadUser = async () => {
+    await checkKey();
     const u = await getCurrentUser();
     setUser(u);
     setIsLoading(false);
@@ -28,6 +37,13 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const handleSelectKey = async () => {
+    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+      await window.aistudio.openSelectKey();
+      setHasApiKey(true); // Asumsikan sukses setelah dialog dibuka sesuai instruksi
+    }
+  };
+
   const handleLogout = () => {
     if (window.confirm("Apakah Anda yakin ingin keluar?")) {
       logout();
@@ -35,18 +51,39 @@ const App: React.FC = () => {
     }
   };
 
-  const handleShare = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url);
-    setIsCopying(true);
-    setTimeout(() => setIsCopying(false), 2000);
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-medium animate-pulse">Menghubungkan ke Cloud Studio...</p>
+        <p className="text-slate-500 font-medium animate-pulse">Menghubungkan ke Cloud...</p>
+      </div>
+    );
+  }
+
+  // Jika API Key belum dipilih (khusus lingkungan AI Studio)
+  if (!hasApiKey) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-[2.5rem] p-10 text-center shadow-2xl">
+          <div className="w-20 h-20 bg-blue-600/20 rounded-3xl flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-4">Aktivasi Cloud AI</h2>
+          <p className="text-slate-400 text-sm mb-8 leading-relaxed">
+            Untuk menggunakan layanan VoxVideo AI, Anda perlu menghubungkan API Key dari Google Cloud Project yang memiliki billing aktif.
+          </p>
+          <button 
+            onClick={handleSelectKey}
+            className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all"
+          >
+            Pilih API Key
+          </button>
+          <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="block mt-4 text-xs text-slate-500 hover:text-blue-400 transition-colors">
+            Pelajari tentang Billing API Key
+          </a>
+        </div>
       </div>
     );
   }
@@ -68,7 +105,7 @@ const App: React.FC = () => {
               </svg>
             </div>
             <div>
-              <h1 className="text-base font-black text-white leading-none tracking-tight">VOXVIDEO <span className="text-blue-500">AI</span></h1>
+              <h1 className="text-base font-black text-white leading-none tracking-tight uppercase">VOXVIDEO <span className="text-blue-500">AI</span></h1>
               <p className="text-[9px] text-slate-500 mt-1 font-bold uppercase tracking-widest">{user.email.split('@')[0]}</p>
             </div>
           </div>
@@ -99,8 +136,8 @@ const App: React.FC = () => {
             </div>
 
             <div className="flex items-center space-x-1 border-l border-slate-800 pl-3">
-              <button onClick={handleShare} title="Salin Link" className={`p-2 rounded-lg transition-all ${isCopying ? 'bg-green-500/20 text-green-500' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
-                {isCopying ? <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>}
+              <button onClick={handleSelectKey} title="Ganti API Key" className="p-2 bg-slate-800 text-slate-400 hover:text-blue-400 rounded-lg transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
               </button>
               <button onClick={handleLogout} title="Keluar" className="p-2 bg-slate-800 text-slate-400 hover:text-red-400 rounded-lg transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
@@ -111,18 +148,6 @@ const App: React.FC = () => {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 pt-10">
-        {!isAdmin && user.paymentStatus === 'pending' && (
-          <div className="mb-8 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center space-x-4 animate-pulse">
-            <div className="p-2 bg-amber-500 rounded-lg text-white">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </div>
-            <div>
-              <p className="text-amber-500 text-sm font-bold">Pembayaran Sedang Diverifikasi</p>
-              <p className="text-amber-500/70 text-xs">Admin sedang mengecek mutasi DANA. Akses Anda akan terbuka otomatis.</p>
-            </div>
-          </div>
-        )}
-
         <div className="relative group">
           <div className={`absolute -inset-1 bg-gradient-to-r blur opacity-20 group-hover:opacity-30 transition duration-1000 ${
             activeTab === 'voice' ? 'from-blue-600 to-indigo-600' : 

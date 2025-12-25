@@ -37,7 +37,7 @@ export const PRICE_VOICE = 15000;
 export const PRICE_IMAGE = 50000;
 
 export const DANA_NUMBER = "0877-2586-0048";
-export const DANA_NAME = "GEAN PRATAMA Adiaksa";
+export const DANA_NAME = "GEAN PRATAMA ADIAKSA";
 
 // KONFIGURASI SUPABASE (Dapatkan dari Dashboard Supabase Anda)
 export const SUPABASE_URL = "https://yvfyotliopcvginafjce.supabase.co";
