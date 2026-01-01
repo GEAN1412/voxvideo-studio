@@ -31,10 +31,10 @@ export const VoiceGenerator: React.FC = () => {
     if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
       await window.aistudio.openSelectKey();
       setError(null);
-      // Aturan: Langsung reload atau asumsikan sukses
       setTimeout(() => window.location.reload(), 500);
     } else {
-      alert("Jika Anda di Vercel, pastikan Environment Variable API_KEY sudah benar dan Project tersebut memiliki billing aktif di Google Cloud Console.");
+      // Jika di Vercel, berikan instruksi popup
+      alert("Langkah Perbaikan di Vercel:\n1. Buka Dashboard Vercel Proyek Anda.\n2. Ke Settings -> Environment Variables.\n3. Update API_KEY dengan kunci Tier 1 terbaru dari Google AI Studio.\n4. Lakukan REDEPLOY di tab Deployments.");
     }
   };
 
@@ -74,19 +74,19 @@ export const VoiceGenerator: React.FC = () => {
         }
       }
     } catch (err: any) {
-      console.error("API Error Response:", err);
+      console.error("API Error:", err);
       let rawMsg = err.message || "Gagal menghasilkan suara";
       let isKeyIssue = false;
       
       if (
         rawMsg.toLowerCase().includes("requested entity was not found") || 
-        rawMsg.toLowerCase().includes("api key not valid") ||
+        rawMsg.toLowerCase().includes("not found") ||
         rawMsg.includes("403") || 
         rawMsg.includes("404") ||
         rawMsg.includes("400")
       ) {
         isKeyIssue = true;
-        rawMsg = "Sinkronisasi Billing Diperlukan: Google memerlukan verifikasi ulang API Key untuk akun Tier 1 Anda agar bisa mengakses model TTS Premium.";
+        rawMsg = "Sinkronisasi Tier 1 Diperlukan: Google tidak menemukan model ini pada API Key Anda. Pastikan API_KEY di Vercel menggunakan Project ID yang memiliki Billing Tier 1 aktif.";
       }
       
       setError({ msg: rawMsg, isKeyIssue });
@@ -146,7 +146,7 @@ export const VoiceGenerator: React.FC = () => {
               onClick={handleFixApiKey}
               className="w-full py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg transition-all"
             >
-              Sinkronisasi Ulang API Key
+              Panduan Cara Memperbaiki
             </button>
           )}
         </div>

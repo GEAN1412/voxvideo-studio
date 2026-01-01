@@ -2,8 +2,16 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { decode, decodeAudioData } from "./audio";
 
-// Selalu buat instance baru saat dipanggil untuk memastikan API_KEY terbaru digunakan
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Fungsi untuk mendapatkan API Key dengan fallback aman
+const getApiKey = () => {
+  // 1. Cek di process.env (Vercel/Node)
+  if (process.env.API_KEY) return process.env.API_KEY;
+  // 2. Cek di window.aistudio (Google AI Studio Environment)
+  // Ini ditangani secara otomatis oleh SDK jika dijalankan di frame AI Studio
+  return ''; 
+};
+
+const getAI = () => new GoogleGenAI({ apiKey: getApiKey() });
 
 export const generateTTS = async (text: string, voiceName: string) => {
   const ai = getAI();
@@ -31,7 +39,7 @@ export const generateTTS = async (text: string, voiceName: string) => {
     
     return { audioBuffer, audioContext };
   } catch (error: any) {
-    console.error("Gemini TTS Error:", error);
+    console.error("Gemini TTS Error Detail:", error);
     throw error;
   }
 };
@@ -71,7 +79,7 @@ export const generateVideo = async (
   onProgress?: (msg: string) => void
 ) => {
   const ai = getAI();
-  onProgress?.("Menyiapkan permintaan ke Veo...");
+  onProgress?.("Menghubungkan ke server Veo...");
   
   try {
     let operation = await ai.models.generateVideos({
@@ -84,27 +92,16 @@ export const generateVideo = async (
       }
     });
 
-    const statusMessages = [
-      "Menganalisa komposisi visual...",
-      "Merender frame video...",
-      "Menyusun animasi AI...",
-      "Finalisasi pixel...",
-      "Hampir selesai, sedang mengunggah..."
-    ];
-    let msgIndex = 0;
-
     while (!operation.done) {
-      onProgress?.(statusMessages[msgIndex % statusMessages.length]);
-      msgIndex++;
+      onProgress?.("Sedang merender video (proses ini butuh 1-2 menit)...");
       await new Promise(resolve => setTimeout(resolve, 10000));
       operation = await ai.operations.getVideosOperation({ operation: operation });
     }
 
     const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-    if (!downloadLink) throw new Error("Video gagal dibuat oleh model.");
+    if (!downloadLink) throw new Error("Video gagal dibuat.");
 
-    // Harus menyertakan API Key saat fetch link video dari Google Cloud
-    const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+    const response = await fetch(`${downloadLink}&key=${getApiKey()}`);
     const blob = await response.blob();
     return URL.createObjectURL(blob);
   } catch (error: any) {
