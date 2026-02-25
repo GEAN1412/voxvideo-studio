@@ -8,6 +8,7 @@ export const VideoGenerator: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
   const [resolution, setResolution] = useState<Resolution>('720p');
+  const [style, setStyle] = useState<'none' | 'stickman' | 'lego'>('none');
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState('');
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -29,13 +30,26 @@ export const VideoGenerator: React.FC = () => {
     setProgress("Memulai koneksi ke Veo...");
 
     try {
-      const url = await generateVideo(prompt, aspectRatio, resolution, (msg) => {
+      let finalPrompt = prompt;
+      if (style === 'stickman') finalPrompt += ", stickman style, simple line drawing character, minimalist animation";
+      if (style === 'lego') finalPrompt += ", lego style, made of plastic building blocks, toy aesthetic, stop motion feel";
+
+      const url = await generateVideo(finalPrompt, aspectRatio, resolution, (msg) => {
         setProgress(msg);
       });
       setVideoUrl(url);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Gagal membuat video. Pastikan kuota Tier 1 Anda mencukupi.");
+      let msg = err.message || "Gagal membuat video.";
+      
+      if (msg.includes("Sinkronisasi Billing") || msg.includes("billing") || msg.includes("Tier 1")) {
+        msg = "Sinkronisasi Billing Diperlukan: Model Veo memerlukan akun dengan billing aktif (meskipun dalam Tier 1). Silakan hubungkan Billing Account di Google Cloud Console.";
+      } else if (msg.includes("429") || msg.includes("QUOTA_EXHAUSTED") || msg.includes("quota")) {
+        msg = "Kuota Terlampaui (Error 429): Anda telah mencapai batas request untuk model Veo. Silakan tunggu beberapa menit atau pastikan Billing Account Anda sudah terverifikasi di Google Cloud.";
+      } else if (msg.includes('403') || msg.includes('404') || msg.toLowerCase().includes('not found')) {
+        msg = "Akses Ditolak (Error 403/404): Model Veo tidak ditemukan atau API Key Anda tidak memiliki izin. Pastikan model ini sudah diaktifkan dan billing Anda aktif di Google Cloud Console.";
+      }
+      setError(msg);
     } finally {
       setIsGenerating(false);
       setProgress('');
@@ -54,15 +68,34 @@ export const VideoGenerator: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-slate-800/50 p-6 rounded-[2rem] border border-slate-700/50 space-y-4">
+      <div className="bg-slate-800/50 p-6 rounded-[2rem] border border-slate-700/50 space-y-6">
         <div>
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Prompt Video</label>
           <textarea
             className="w-full bg-slate-900 border border-slate-700 rounded-2xl p-4 text-white outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] transition-all"
-            placeholder="Contoh: Seekor kucing astronot sedang berjalan di bulan dengan latar belakang bumi yang bercahaya, gaya cinematic..."
+            placeholder="Contoh: Seekor kucing astronot sedang berjalan di bulan..."
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
           />
+        </div>
+
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Model / Gaya</label>
+          <div className="grid grid-cols-3 gap-2 bg-slate-900 p-1 rounded-xl border border-slate-700">
+            {[
+              { id: 'none', label: 'Default' },
+              { id: 'stickman', label: 'Sticky Man' },
+              { id: 'lego', label: 'Lego Model' }
+            ].map(s => (
+              <button
+                key={s.id}
+                onClick={() => setStyle(s.id as any)}
+                className={`py-2 rounded-lg text-xs font-bold transition-all ${style === s.id ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
